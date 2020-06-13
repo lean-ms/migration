@@ -1,18 +1,12 @@
-package other
+package migration
 
 import (
 	"os"
 	"os/exec"
 	"testing"
 
-	"github.com/go-pg/pg/v10/orm"
 	"github.com/lean-ms/database"
 )
-
-type Migration struct {
-	ID        int64
-	Timestamp string
-}
 
 var goPath, _ = exec.LookPath("go")
 
@@ -35,27 +29,29 @@ func TestRunFailedMigration(t *testing.T) {
 	}
 }
 
-func getLastMigrationTimestamp(dbConnection *database.DbConnection) string {
-	var migrations []Migration
-	dbConnection.Database.Model(&migrations).Order("id DESC").Limit(1).Select()
-	if len(migrations) == 0 {
-		return ""
-	}
-	return migrations[0].Timestamp
-}
-
-func setupMigrationTable(dbConnection *database.DbConnection) {
-	model := (*Migration)(nil)
-	dbConnection.Database.CreateTable(model, &orm.CreateTableOptions{
-		IfNotExists: true,
-	})
-}
+var dbConfigPath = "config/database.yml"
 
 func TestCheckCurrentMigrationVersion(t *testing.T) {
-	dbConnection := database.CreateConnection("config/database.yml")
+	setup()
+	dbConnection := database.CreateConnection(dbConfigPath)
 	defer dbConnection.Close()
-	timestamp := getLastMigrationTimestamp(dbConnection)
-	if len(timestamp) > 0 {
-		t.Error("Should not find any migration")
+	if timestamp := GetCurrentVersion(dbConnection); len(timestamp) > 0 {
+		t.Error("First migration timestamp should be an empty string")
 	}
+	SetCurrentVersion(dbConnection, "1234567890")
+	if "1234567890" != GetCurrentVersion(dbConnection) {
+		t.Error("Migration timestamp was not properly set")
+	}
+	tearDown()
+}
+
+func setup() {
+	os.Setenv("LEANMS_ENV", "test")
+	database.DropDatabase(dbConfigPath)
+	database.CreateDatabase(dbConfigPath)
+	database.CreateTable(dbConfigPath, &Migration{}, nil)
+}
+
+func tearDown() {
+	database.DropDatabase(dbConfigPath)
 }

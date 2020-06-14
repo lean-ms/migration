@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/lean-ms/database"
+	"github.com/lean-ms/database/models"
 )
 
 // Migration model.
@@ -28,7 +29,7 @@ func GetCurrentVersion(dbConfigPath string) int {
 
 // SetCurrentVersion creates a new migration with a given a version number
 func SetCurrentVersion(dbConfigPath string, version int) error {
-	database.CreateTable(dbConfigPath, new(Migration), &database.CreateTableOptions{
+	database.CreateTable(dbConfigPath, new(Migration), &models.CreateTableOptions{
 		IfNotExists: true,
 	})
 	dbConnection := database.CreateConnection(dbConfigPath)

@@ -3,29 +3,21 @@ package migration
 import (
 	"flag"
 	"log"
-	"regexp"
-	"time"
 
-	"github.com/go-pg/pg/orm"
 	"github.com/lean-ms/database"
 )
 
 // Migration model.
-// Version is used as an ID. Timestamp is recomended to avoid merging problems
+// Version is used as an ID. Timestamp version is recomended to avoid merging problems
 type Migration struct {
 	ID      int64
 	Version int
 }
 
-func setupMigrationTable(dbConnection *database.DbConnection) {
-	model := (*Migration)(nil)
-	dbConnection.Database.CreateTable(model, &orm.CreateTableOptions{
-		IfNotExists: true,
-	})
-}
-
 // GetCurrentVersion returns the Timestamp of latest migration
-func GetCurrentVersion(dbConnection *database.DbConnection) int {
+func GetCurrentVersion(dbConfigPath string) int {
+	dbConnection := database.CreateConnection(dbConfigPath)
+	defer dbConnection.Close()
 	var migrations []Migration
 	dbConnection.Database.Model(&migrations).Order("id DESC").Limit(1).Select()
 	if len(migrations) == 0 {
@@ -35,13 +27,17 @@ func GetCurrentVersion(dbConnection *database.DbConnection) int {
 }
 
 // SetCurrentVersion creates a new migration with a given a version number
-func SetCurrentVersion(dbConnection *database.DbConnection, version int) error {
+func SetCurrentVersion(dbConfigPath string, version int) error {
+	dbConnection := database.CreateConnection(dbConfigPath)
+	defer dbConnection.Close()
 	err := dbConnection.Database.Insert(&Migration{Version: version})
 	return err
 }
 
 // RollbackVersion removes last version
-func RollbackVersion(dbConnection *database.DbConnection) error {
+func RollbackVersion(dbConfigPath string) error {
+	dbConnection := database.CreateConnection(dbConfigPath)
+	defer dbConnection.Close()
 	migration := new(Migration)
 	err := dbConnection.Database.Model(migration).Last()
 	if err != nil {
@@ -53,33 +49,32 @@ func RollbackVersion(dbConnection *database.DbConnection) error {
 
 type migrateFn func() error
 
-func Timestamp() string {
-	timestamp := time.Now().Format(time.RFC3339)
-	a, _ := regexp.Compile("\\..*")
-	timestamp = a.ReplaceAllLiteralString(timestamp, "")
-	a, _ = regexp.Compile("[^\\d]")
-	timestamp = a.ReplaceAllLiteralString(timestamp, "")
-	return timestamp[:14]
-}
+// func Timestamp() string {
+// 	timestamp := time.Now().Format(time.RFC3339)
+// 	a, _ := regexp.Compile("\\..*")
+// 	timestamp = a.ReplaceAllLiteralString(timestamp, "")
+// 	a, _ = regexp.Compile("[^\\d]")
+// 	timestamp = a.ReplaceAllLiteralString(timestamp, "")
+// 	return timestamp[:14]
+// }
 
 func Run(upFn migrateFn, downFn migrateFn, version int, args ...string) {
-	isRollback := getIsRollbackFromCli(args...)
-	dbConnection := database.CreateConnection(dbConfigPath)
-	defer dbConnection.Close()
-	currentVersion := GetCurrentVersion(dbConnection)
+	dbConfigPath, isRollback := getIsRollbackFromCli(args...)
+	currentVersion := GetCurrentVersion(dbConfigPath)
 	if isRollback && runRollback(version, currentVersion, downFn) {
-		RollbackVersion(dbConnection)
+		RollbackVersion(dbConfigPath)
 	} else if !isRollback && runForward(version, currentVersion, upFn) {
-		SetCurrentVersion(dbConnection, version)
+		SetCurrentVersion(dbConfigPath, version)
 	}
 	log.Println("Finished")
 }
 
-func getIsRollbackFromCli(args ...string) bool {
+func getIsRollbackFromCli(args ...string) (string, bool) {
 	cmd := flag.NewFlagSet("migrate", flag.ExitOnError)
 	isRollback := cmd.Bool("rollback", false, "migrate one version behind")
+	configPath := cmd.String("config", "config/database.yml", "location of database yml config file")
 	cmd.Parse(args[2:])
-	return *isRollback
+	return *configPath, *isRollback
 }
 
 func runForward(version int, currentVersion int, upFn migrateFn) bool {

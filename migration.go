@@ -60,7 +60,9 @@ type migrateFn func() error
 
 func Run(upFn migrateFn, downFn migrateFn, version int, args ...string) {
 	dbConfigPath, isRollback := getIsRollbackFromCli(args...)
+	log.Println("Starting migration...")
 	currentVersion := GetCurrentVersion(dbConfigPath)
+	log.Printf("Current version is: %d", currentVersion)
 	if isRollback && runRollback(version, currentVersion, downFn) {
 		RollbackVersion(dbConfigPath)
 	} else if !isRollback && runForward(version, currentVersion, upFn) {
@@ -78,7 +80,6 @@ func getIsRollbackFromCli(args ...string) (string, bool) {
 }
 
 func runForward(version int, currentVersion int, upFn migrateFn) bool {
-	log.Println("Starting migration...")
 	if version <= currentVersion {
 		log.Printf("Doing nothing. New version %v is not higher than %v", version, currentVersion)
 		return false
@@ -92,7 +93,6 @@ func runForward(version int, currentVersion int, upFn migrateFn) bool {
 }
 
 func runRollback(version int, currentVersion int, downFn migrateFn) bool {
-	log.Println("Starting rollback...")
 	if currentVersion < 0 {
 		log.Println("Doing nothing. Cannot rollback from empty state")
 		return false

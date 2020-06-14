@@ -6,8 +6,7 @@ on:
   pull_request:
     branches: [ master ]
 
-jobs:
-
+jobs: 
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -47,3 +46,14 @@ jobs:
         coverageCommand: go test -coverprofile c.out -v ./...
         coverageLocations: ${{github.workspace}}/c.out:gocov
         prefix: github.com/lean-ms/migration
+  
+  tag:
+    name: Create Tag
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@master
+    - name: Bump version and push tag
+      uses: mathieudutour/github-tag-action@v4.5
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}

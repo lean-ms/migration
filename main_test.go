@@ -4,8 +4,6 @@ import (
 	"os"
 	"os/exec"
 	"testing"
-
-	"github.com/lean-ms/database"
 )
 
 var goPath, _ = exec.LookPath("go")
@@ -27,31 +25,4 @@ func TestRunFailedMigration(t *testing.T) {
 	if err == nil {
 		t.Error("Output should be fail")
 	}
-}
-
-var dbConfigPath = "config/database.yml"
-
-func TestCheckCurrentMigrationVersion(t *testing.T) {
-	setup()
-	dbConnection := database.CreateConnection(dbConfigPath)
-	defer dbConnection.Close()
-	if timestamp := GetCurrentVersion(dbConnection); len(timestamp) > 0 {
-		t.Error("First migration timestamp should be an empty string")
-	}
-	SetCurrentVersion(dbConnection, "1234567890")
-	if "1234567890" != GetCurrentVersion(dbConnection) {
-		t.Error("Migration timestamp was not properly set")
-	}
-	tearDown()
-}
-
-func setup() {
-	os.Setenv("LEANMS_ENV", "test")
-	database.DropDatabase(dbConfigPath)
-	database.CreateDatabase(dbConfigPath)
-	database.CreateTable(dbConfigPath, &Migration{}, nil)
-}
-
-func tearDown() {
-	database.DropDatabase(dbConfigPath)
 }

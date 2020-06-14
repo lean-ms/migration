@@ -28,10 +28,12 @@ func GetCurrentVersion(dbConfigPath string) int {
 
 // SetCurrentVersion creates a new migration with a given a version number
 func SetCurrentVersion(dbConfigPath string, version int) error {
+	database.CreateTable(dbConfigPath, new(Migration), &database.CreateTableOptions{
+		IfNotExists: true,
+	})
 	dbConnection := database.CreateConnection(dbConfigPath)
 	defer dbConnection.Close()
-	err := dbConnection.Database.Insert(&Migration{Version: version})
-	return err
+	return dbConnection.Database.Insert(&Migration{Version: version})
 }
 
 // RollbackVersion removes last version
@@ -43,8 +45,7 @@ func RollbackVersion(dbConfigPath string) error {
 	if err != nil {
 		return err
 	}
-	dbConnection.Database.Delete(migration)
-	return nil
+	return dbConnection.Database.Delete(migration)
 }
 
 type migrateFn func() error

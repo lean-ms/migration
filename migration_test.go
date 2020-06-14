@@ -13,8 +13,7 @@ var dbConfigPath = "config/database.yml"
 var baseVersion = 1234567890
 
 type MigrationTestCase struct {
-	command           []string
-	version           int
+	options           *MigrationOptions
 	isMigrationFnOk   bool
 	expectedUpCount   int
 	expectedDownCount int
@@ -39,8 +38,7 @@ func (m *MigrationTestMock) downFn() error {
 
 var testCases = []MigrationTestCase{
 	{
-		command:           []string{"lean-ms", "migrate", "-config=config/database.yml"},
-		version:           baseVersion,
+		options:           &MigrationOptions{IsRollback: false, Version: baseVersion, ConfigPath: "config/database.yml"},
 		isMigrationFnOk:   false,
 		description:       "First migration (with problems)",
 		expectedUpCount:   0,
@@ -48,8 +46,7 @@ var testCases = []MigrationTestCase{
 		expectedVersion:   -1,
 	},
 	{
-		command:           []string{"lean-ms", "migrate", "-config=config/database.yml"},
-		version:           baseVersion,
+		options:           &MigrationOptions{IsRollback: false, Version: baseVersion, ConfigPath: "config/database.yml"},
 		isMigrationFnOk:   true,
 		description:       "First migration",
 		expectedUpCount:   1,
@@ -57,8 +54,7 @@ var testCases = []MigrationTestCase{
 		expectedVersion:   baseVersion,
 	},
 	{
-		command:           []string{"lean-ms", "migrate", "-config=config/database.yml"},
-		version:           baseVersion,
+		options:           &MigrationOptions{IsRollback: false, Version: baseVersion, ConfigPath: "config/database.yml"},
 		isMigrationFnOk:   true,
 		description:       "Running same migration twice",
 		expectedUpCount:   1,
@@ -66,8 +62,7 @@ var testCases = []MigrationTestCase{
 		expectedVersion:   baseVersion,
 	},
 	{
-		command:           []string{"lean-ms", "migrate", "-rollback", "-config=config/database.yml"},
-		version:           baseVersion - 1,
+		options:           &MigrationOptions{IsRollback: true, Version: baseVersion - 1, ConfigPath: "config/database.yml"},
 		isMigrationFnOk:   true,
 		description:       "Rolling back with wrong version",
 		expectedUpCount:   1,
@@ -75,8 +70,7 @@ var testCases = []MigrationTestCase{
 		expectedVersion:   baseVersion,
 	},
 	{
-		command:           []string{"lean-ms", "migrate", "-rollback", "-config=config/database.yml"},
-		version:           baseVersion,
+		options:           &MigrationOptions{IsRollback: true, Version: baseVersion, ConfigPath: "config/database.yml"},
 		isMigrationFnOk:   false,
 		description:       "Rolling back with errors",
 		expectedUpCount:   1,
@@ -84,8 +78,7 @@ var testCases = []MigrationTestCase{
 		expectedVersion:   baseVersion,
 	},
 	{
-		command:           []string{"lean-ms", "migrate", "-rollback", "-config=config/database.yml"},
-		version:           baseVersion,
+		options:           &MigrationOptions{IsRollback: true, Version: baseVersion, ConfigPath: "config/database.yml"},
 		isMigrationFnOk:   true,
 		description:       "Rolling back correctly",
 		expectedUpCount:   1,
@@ -93,8 +86,7 @@ var testCases = []MigrationTestCase{
 		expectedVersion:   -1,
 	},
 	{
-		command:           []string{"lean-ms", "migrate", "-rollback", "-config=config/database.yml"},
-		version:           baseVersion,
+		options:           &MigrationOptions{IsRollback: true, Version: baseVersion, ConfigPath: "config/database.yml"},
 		isMigrationFnOk:   true,
 		description:       "Rolling back from initial state",
 		expectedUpCount:   1,
@@ -102,8 +94,7 @@ var testCases = []MigrationTestCase{
 		expectedVersion:   -1,
 	},
 	{
-		command:           []string{"lean-ms", "migrate", "-config=config/database.yml"},
-		version:           1111,
+		options:           &MigrationOptions{IsRollback: false, Version: 1111, ConfigPath: "config/database.yml"},
 		isMigrationFnOk:   true,
 		description:       "Migrating forward again",
 		expectedUpCount:   2,
@@ -111,8 +102,7 @@ var testCases = []MigrationTestCase{
 		expectedVersion:   1111,
 	},
 	{
-		command:           []string{"lean-ms", "migrate", "-config=config/database.yml"},
-		version:           1110,
+		options:           &MigrationOptions{IsRollback: false, Version: 1110, ConfigPath: "config/database.yml"},
 		isMigrationFnOk:   true,
 		description:       "Migrating with lower version than actual",
 		expectedUpCount:   2,
@@ -120,8 +110,7 @@ var testCases = []MigrationTestCase{
 		expectedVersion:   1111,
 	},
 	{
-		command:           []string{"lean-ms", "migrate", "-config=config/database.yml"},
-		version:           1115,
+		options:           &MigrationOptions{IsRollback: false, Version: 1115, ConfigPath: "config/database.yml"},
 		isMigrationFnOk:   true,
 		description:       "Migrating up again correctly",
 		expectedUpCount:   3,
@@ -129,8 +118,7 @@ var testCases = []MigrationTestCase{
 		expectedVersion:   1115,
 	},
 	{
-		command:           []string{"lean-ms", "migrate", "-rollback", "-config=config/database.yml"},
-		version:           1115,
+		options:           &MigrationOptions{IsRollback: true, Version: 1115, ConfigPath: "config/database.yml"},
 		isMigrationFnOk:   true,
 		description:       "Rolling back once",
 		expectedUpCount:   3,
@@ -139,8 +127,7 @@ var testCases = []MigrationTestCase{
 	},
 
 	{
-		command:           []string{"lean-ms", "migrate", "-rollback", "-config=config/database.yml"},
-		version:           1111,
+		options:           &MigrationOptions{IsRollback: true, Version: 1111, ConfigPath: "config/database.yml"},
 		isMigrationFnOk:   true,
 		description:       "Rolling back twice",
 		expectedUpCount:   3,
@@ -158,9 +145,9 @@ func TestSuccessfulMigrations(t *testing.T) {
 	m := &MigrationTestMock{}
 	for _, testCase := range testCases {
 		if testCase.isMigrationFnOk {
-			Run(m.upFn, m.downFn, testCase.version, testCase.command...)
+			Run(m.upFn, m.downFn, testCase.options)
 		} else {
-			Run(problematicFn, problematicFn, testCase.version, testCase.command...)
+			Run(problematicFn, problematicFn, testCase.options)
 		}
 		if err := checkErrors(testCase, *m); err != nil {
 			t.Error(err)

@@ -58,15 +58,14 @@ type migrateFn func() error
 // 	return timestamp[:14]
 // }
 
-func Run(upFn migrateFn, downFn migrateFn, version int, args ...string) {
-	dbConfigPath, isRollback := getIsRollbackFromCli(args...)
-	log.Println("Starting migration...")
-	currentVersion := GetCurrentVersion(dbConfigPath)
-	log.Printf("Current version is: %d", currentVersion)
-	if isRollback && runRollback(version, currentVersion, downFn) {
-		RollbackVersion(dbConfigPath)
-	} else if !isRollback && runForward(version, currentVersion, upFn) {
-		SetCurrentVersion(dbConfigPath, version)
+func Run(upFn migrateFn, downFn migrateFn, opts *MigrationOptions) {
+	log.Printf("Starting migration. Options: %s\n", opts.String())
+	currentVersion := GetCurrentVersion(opts.ConfigPath)
+	log.Printf("Current version is: %d\n", currentVersion)
+	if opts.IsRollback && runRollback(opts.Version, currentVersion, downFn) {
+		RollbackVersion(opts.ConfigPath)
+	} else if !opts.IsRollback && runForward(opts.Version, currentVersion, upFn) {
+		SetCurrentVersion(opts.ConfigPath, opts.Version)
 	}
 	log.Println("Finished")
 }

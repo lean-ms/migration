@@ -1,7 +1,7 @@
 package migration
 
 import (
-	"flag"
+	"fmt"
 	"log"
 
 	"github.com/lean-ms/database"
@@ -58,24 +58,24 @@ type migrateFn func() error
 // 	return timestamp[:14]
 // }
 
-func Run(upFn migrateFn, downFn migrateFn, opts *MigrationOptions) {
+func printableVersion(version int) string {
+	if version < 0 {
+		return "Empty"
+	}
+	return fmt.Sprintf("%v", version)
+}
+
+func Run(upFn migrateFn, downFn migrateFn, opts *Options) {
 	log.Printf("Starting migration. Options: %s\n", opts.String())
 	currentVersion := GetCurrentVersion(opts.ConfigPath)
-	log.Printf("Current version is: %d\n", currentVersion)
+	log.Printf("Current version is %s\n", printableVersion(currentVersion))
 	if opts.IsRollback && runRollback(opts.Version, currentVersion, downFn) {
 		RollbackVersion(opts.ConfigPath)
 	} else if !opts.IsRollback && runForward(opts.Version, currentVersion, upFn) {
 		SetCurrentVersion(opts.ConfigPath, opts.Version)
 	}
-	log.Println("Finished")
-}
-
-func getIsRollbackFromCli(args ...string) (string, bool) {
-	cmd := flag.NewFlagSet("migrate", flag.ExitOnError)
-	isRollback := cmd.Bool("rollback", false, "migrate one version behind")
-	configPath := cmd.String("config", "config/database.yml", "location of database yml config file")
-	cmd.Parse(args[2:])
-	return *configPath, *isRollback
+	currentVersion = GetCurrentVersion(opts.ConfigPath)
+	log.Printf("Finished. Version now is %s\n", printableVersion(currentVersion))
 }
 
 func runForward(version int, currentVersion int, upFn migrateFn) bool {

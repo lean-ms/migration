@@ -2,12 +2,13 @@ package migration
 
 import "fmt"
 
-type MigrationOptions struct {
+// Options model exposes migration parameters
+type Options struct {
 	IsRollback bool
 	ConfigPath string
 	Version    int
 }
 
-func (m *MigrationOptions) String() string {
+func (m *Options) String() string {
 	return fmt.Sprintf("{IsRollback: %v, Version: %v, ConfigPath: %v}", m.IsRollback, m.Version, m.ConfigPath)
 }

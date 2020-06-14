@@ -1,19 +1,39 @@
 package main
 
 import (
-	"fmt"
 	"os"
+	"time"
 
 	"github.com/lean-ms/migration"
 )
 
+type User struct {
+	ID        int64
+	Name      string
+	Emails    []string
+	UpdatedAt time.Time
+	CreatedAt time.Time
+}
+
+var config = "../../config/database.yml"
+
 func Up() error {
-	fmt.Println("running up migration")
+	if err := database.CreateDabase(config); err != nil {
+		return err
+	}
+	if err := database.CreateTable(config, new(User), nil); err != nil {
+		return err
+	}
 	return nil
 }
 
 func Down() error {
-	fmt.Println("running down migration")
+	if err := database.DropTable(config, new(User), nil); err != nil {
+		return err
+	}
+	if err := database.DropDabase(config); err != nil {
+		return err
+	}
 	return nil
 }
 

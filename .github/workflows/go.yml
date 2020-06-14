@@ -39,8 +39,11 @@ jobs:
     - name: Build
       run: go build -v .
 
-    - name: Test
-      run: go test -v ./...
-    
-    - name: Coverage
-      run: chmod +x ./coverage.sh && sh ./coverage.sh
+    - name: Test Coverage
+      uses: paambaati/codeclimate-action@v2.6.0
+      env:
+        CC_TEST_REPORTER_ID: 584dbd5c892f225f70261e9af11ab6dd5e363bb3a3b1d02109993300faee8ecc
+      with:
+        coverageCommand: go test -coverprofile c.out -v ./...
+        coverageLocations: ${{github.workspace}}/c.out:gocov
+        prefix: github.com/lean-ms/migration

@@ -22,6 +22,12 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
+    - name: Postgres
+      uses: huaxk/postgis-action@v1
+      with:
+        postgresql password: ''
+        postgresql user: 'postgres'  
+
     - name: Get dependencies
       run: |
         go get -v -t -d ./...
@@ -37,4 +43,4 @@ jobs:
       run: go test -v ./...
     
     - name: Coverage
-      run: sh coverage.sh
+      run: chmod +x ./coverage.sh && sh ./coverage.sh
